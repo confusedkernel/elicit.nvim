@@ -6,7 +6,7 @@ elicit.nvim                                               *elicit.nvim*
 Elicit is a Neovim plugin for linguistic fieldwork.
 Session files are Markdown with YAML frontmatter.
 
-This help file currently documents phase 1 scaffolding for the v0.1 MVP.
+This help file documents the current v0.1 MVP progress.
 
 ==============================================================================
 Contents                                                   *elicit-contents*
@@ -36,11 +36,14 @@ If setup is not called, defaults are used.
 
                                                         *:ElicitNewSession*
 :ElicitNewSession [name]
-  Create a new session file. (Implemented in phase 2.)
+  Create a new session file under `session.dir`.
+  If [name] is omitted, a default name is generated.
+  If [name] has no `.md` extension, `.md` is appended.
 
                                                         *:ElicitNewExample*
 :ElicitNewExample
-  Insert a new elicitation example block. (Implemented in phase 2.)
+  Insert a new elicitation example block at the cursor location.
+  Example ID is generated from language, date, and session-local counter.
 
                                                           *:ElicitValidate*
 :ElicitValidate
@@ -109,17 +112,18 @@ When `search.corpus_glob` is nil, corpus discovery uses:
 ==============================================================================
 4. Development status                                           *elicit-status*
 
-Current phase: v0.1 phase 1.
+Current phase: v0.1 phase 2.
 
 Included now:
   - Plugin bootstrap and setup entry point.
   - Default config and config merge.
   - Core parser module for frontmatter and example blocks.
   - User command registration with argument validation.
-  - Command modules scaffolded for phases 2-5.
+  - New session template generation (`:ElicitNewSession`).
+  - New example block insertion with ID generation (`:ElicitNewExample`).
 
 Planned next:
-  - Phase 2: new session template and new example insertion.
+  - Phase 3: validation diagnostics and quickfix integration.
 
 ==============================================================================
 vim:tw=78:ts=8:noet:ft=help:norl:

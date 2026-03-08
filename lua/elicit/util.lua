@@ -1,5 +1,7 @@
 local M = {}
 
+local LUA_PATTERN_MAGIC = "([%(%)%.%%%+%-%*%?%[%]%^%$])"
+
 function M.trim(value)
 	if value == nil then
 		return ""
@@ -18,11 +20,52 @@ function M.join_path(...)
 
 	for _, part in ipairs(parts) do
 		if part and part ~= "" then
-			table.insert(cleaned, part:gsub("/+$", ""))
+			local normalized = part:gsub("/+$", "")
+			table.insert(cleaned, normalized)
 		end
 	end
 
 	return table.concat(cleaned, "/")
+end
+
+function M.escape_lua_pattern(text)
+	return (tostring(text or ""):gsub(LUA_PATTERN_MAGIC, "%%%1"))
+end
+
+function M.is_absolute_path(path)
+	local value = tostring(path or "")
+
+	if value == "" then
+		return false
+	end
+
+	if value:sub(1, 1) == "/" then
+		return true
+	end
+
+	if value:match("^%a:[/\\]") then
+		return true
+	end
+
+	return false
+end
+
+function M.normalize_path(path)
+	local normalized = vim.fn.fnamemodify(path, ":p")
+
+	if #normalized > 1 then
+		normalized = normalized:gsub("/+$", "")
+	end
+
+	return normalized
+end
+
+function M.dirname(path)
+	return vim.fn.fnamemodify(path, ":h")
+end
+
+function M.file_exists(path)
+	return vim.fn.filereadable(path) == 1
 end
 
 function M.split_words(text)
