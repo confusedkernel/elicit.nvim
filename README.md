@@ -8,8 +8,8 @@ This project is currently under development (v0.1 in progress). You can check pl
 
 - `:ElicitNewSession [name]` (implemented)
 - `:ElicitNewExample` (implemented)
-- `:ElicitValidate`
-- `:ElicitSearch {kind} {query}`
+- `:ElicitValidate` (implemented)
+- `:ElicitSearch {kind} {query}` (implemented)
 - `:ElicitExport {format} {scope} [value]`
 
 ## Features
@@ -19,6 +19,9 @@ This project is currently under development (v0.1 in progress). You can check pl
 - Configurable frontmatter fields via `session.fields`.
 - Auto-generated example block insertion with configurable `example.id_format`.
 - ID token replacement for `LID`, `YYYYMMDD`, and `N...` counter runs.
+- Session validation with quickfix diagnostics for token mismatches, missing required fields, and placeholder markers.
+- Corpus search by `form`, `gloss`, `status`, `speaker`, and `session`.
+- Search result display through quickfix or Telescope (`search.backend`).
 
 ## Setup
 
@@ -26,6 +29,9 @@ This project is currently under development (v0.1 in progress). You can check pl
 require("elicit").setup({
   session = {
     dir = "sessions",
+  },
+  search = {
+    backend = "telescope", -- or "quickfix"
   },
 })
 ```
@@ -35,6 +41,19 @@ Default corpus discovery is:
 `session.dir .. "/**/*.md"`
 
 unless `search.corpus_glob` is explicitly configured.
+
+## Telescope Integration
+
+If you use `telescope.nvim`, load the extension:
+
+```lua
+require("telescope").load_extension("elicit")
+```
+
+Then run:
+
+- `:Telescope elicit` (interactive kind + query prompts)
+- `:ElicitSearch {kind} {query}` (same search engine, backend-controlled display)
 
 ## Roadmap
 

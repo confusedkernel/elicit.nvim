@@ -1,4 +1,4 @@
-*elicit.nvim.txt*            For Neovim >= 0.9               Last change: 2026-03-08
+*elicit.nvim.txt*            For Neovim >= 0.9               Last change: 2026-03-09
 
 ==============================================================================
 elicit.nvim                                               *elicit.nvim*
@@ -14,7 +14,8 @@ Contents                                                   *elicit-contents*
 1. Setup......................................................|elicit-setup|
 2. Commands................................................|elicit-commands|
 3. Configuration..............................................|elicit-config|
-4. Development status........................................|elicit-status|
+4. Telescope integration.................................|elicit-telescope|
+5. Development status........................................|elicit-status|
 
 ==============================================================================
 1. Setup                                                       *elicit-setup*
@@ -47,20 +48,24 @@ If setup is not called, defaults are used.
 
                                                           *:ElicitValidate*
 :ElicitValidate
-  Validate current session. (Implemented in phase 3.)
+  Validate current session and populate quickfix diagnostics.
+  Checks Segmentation/Gloss token alignment, empty required fields,
+  and placeholder markers configured in `validation.placeholders`.
 
                                                             *:ElicitSearch*
 :ElicitSearch {kind} {query}
-  Search the corpus by kind.
+  Search the corpus by kind and query.
   Kinds: form, gloss, status, speaker, session.
-  (Implemented in phase 4.)
+  Results open in the configured backend (`search.backend`).
+  If backend is `telescope` but telescope is unavailable,
+  results fall back to quickfix.
 
                                                             *:ElicitExport*
 :ElicitExport {format} {scope} [value]
   Export data in selected format.
   Formats: markdown, typst, json.
   Scopes: example, session, status.
-  (Implemented in phase 5.)
+  (Planned for phase 5.)
 
 ==============================================================================
 3. Configuration                                               *elicit-config*
@@ -94,7 +99,7 @@ Default config:
       placeholders = { "?", "TODO", "XXX" },
     },
     search = {
-      backend = "telescope",
+      backend = "telescope", -- or "quickfix"
       corpus_glob = nil,
     },
     export = {
@@ -110,9 +115,26 @@ When `search.corpus_glob` is nil, corpus discovery uses:
 <
 
 ==============================================================================
-4. Development status                                           *elicit-status*
+4. Telescope integration                                   *elicit-telescope*
 
-Current phase: v0.1 phase 2.
+Load the extension after telescope setup:
+
+>
+  require("telescope").load_extension("elicit")
+<
+
+Then run:
+
+  :Telescope elicit
+    Prompt for kind and query, then open matches in Telescope.
+
+  :ElicitSearch {kind} {query}
+    Run the same search engine, using configured backend display.
+
+==============================================================================
+5. Development status                                           *elicit-status*
+
+Current phase: v0.1 phase 4.
 
 Included now:
   - Plugin bootstrap and setup entry point.
@@ -121,9 +143,12 @@ Included now:
   - User command registration with argument validation.
   - New session template generation (`:ElicitNewSession`).
   - New example block insertion with ID generation (`:ElicitNewExample`).
+  - Validation diagnostics with quickfix integration (`:ElicitValidate`).
+  - Corpus search by form/gloss/status/speaker/session (`:ElicitSearch`).
+  - Optional Telescope picker entry (`:Telescope elicit`).
 
 Planned next:
-  - Phase 3: validation diagnostics and quickfix integration.
+  - Phase 5: export implementation (`:ElicitExport`).
 
 ==============================================================================
 vim:tw=78:ts=8:noet:ft=help:norl:
