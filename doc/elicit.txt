@@ -64,8 +64,11 @@ If setup is not called, defaults are used.
 :ElicitExport {format} {scope} [value]
   Export data in selected format.
   Formats: markdown, typst, json.
-  Scopes: example, session, status.
-  (Planned for phase 5.)
+  Scopes:
+    example: one example by ID (or current example under cursor)
+    session: all examples in current buffer
+    status: all examples in corpus matching [value] status
+  Output is written under `export.output_dir`.
 
 ==============================================================================
 3. Configuration                                               *elicit-config*
@@ -134,7 +137,7 @@ Then run:
 ==============================================================================
 5. Development status                                           *elicit-status*
 
-Current phase: v0.1 phase 4.
+Current phase: v0.1 phase 5.
 
 Included now:
   - Plugin bootstrap and setup entry point.
@@ -146,9 +149,10 @@ Included now:
   - Validation diagnostics with quickfix integration (`:ElicitValidate`).
   - Corpus search by form/gloss/status/speaker/session (`:ElicitSearch`).
   - Optional Telescope picker entry (`:Telescope elicit`).
+  - Export implementation for markdown/typst/json (`:ElicitExport`).
 
 Planned next:
-  - Phase 5: export implementation (`:ElicitExport`).
+  - v0.2: consistency and lookup features.
 
 ==============================================================================
 vim:tw=78:ts=8:noet:ft=help:norl:

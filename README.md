@@ -2,7 +2,7 @@
 
 `elicit.nvim` is a Neovim plugin for linguistic fieldwork: session notes, elicitation examples, gloss validation, corpus search, and export.
 
-This project is currently under development (v0.1 in progress). You can check planned features in `roadmap.md`.
+This project is currently under development (v0.1 MVP complete; v0.2 in progress). You can check planned features in `roadmap.md`.
 
 ## Commands
 
@@ -10,7 +10,7 @@ This project is currently under development (v0.1 in progress). You can check pl
 - `:ElicitNewExample` (implemented)
 - `:ElicitValidate` (implemented)
 - `:ElicitSearch {kind} {query}` (implemented)
-- `:ElicitExport {format} {scope} [value]`
+- `:ElicitExport {format} {scope} [value]` (implemented)
 
 ## Features
 
@@ -22,6 +22,8 @@ This project is currently under development (v0.1 in progress). You can check pl
 - Session validation with quickfix diagnostics for token mismatches, missing required fields, and placeholder markers.
 - Corpus search by `form`, `gloss`, `status`, `speaker`, and `session`.
 - Search result display through quickfix or Telescope (`search.backend`).
+- Export output for `markdown`, `typst`, and `json` under `export.output_dir`.
+- Export scopes for single example, current session, or status-filtered corpus subset.
 
 ## Setup
 
