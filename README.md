@@ -54,7 +54,7 @@ require("telescope").load_extension("elicit")
 
 Then run:
 
-- `:Telescope elicit` (interactive kind + query prompts)
+- `:Telescope elicit` (pick kind, then filter live in Telescope prompt)
 - `:ElicitSearch {kind} {query}` (same search engine, backend-controlled display)
 
 ## Roadmap

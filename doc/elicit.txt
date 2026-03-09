@@ -129,7 +129,8 @@ Load the extension after telescope setup:
 Then run:
 
   :Telescope elicit
-    Prompt for kind and query, then open matches in Telescope.
+    Pick kind, then filter entries live in Telescope prompt.
+    The picker opens immediately with all entries for that kind.
 
   :ElicitSearch {kind} {query}
     Run the same search engine, using configured backend display.

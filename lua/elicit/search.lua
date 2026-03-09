@@ -32,12 +32,22 @@ local function normalize_backend(backend)
 	return util.trim(tostring(backend or "")):lower()
 end
 
-local function validate_inputs(kind, query)
+local function validate_kind(kind)
 	local normalized_kind = normalize_kind(kind)
-	local normalized_query = normalize_query(query)
 
 	if not KIND_SET[normalized_kind] then
-		return nil, nil, string.format("invalid search kind '%s'", tostring(kind))
+		return nil, string.format("invalid search kind '%s'", tostring(kind))
+	end
+
+	return normalized_kind
+end
+
+local function validate_inputs(kind, query)
+	local normalized_kind, kind_err = validate_kind(kind)
+	local normalized_query = normalize_query(query)
+
+	if not normalized_kind then
+		return nil, nil, kind_err
 	end
 
 	if normalized_query == "" then
@@ -72,7 +82,11 @@ local function compact(value)
 	return text:sub(1, 117) .. "..."
 end
 
-local function contains_query(value, lowered_query)
+local function matches_query(value, lowered_query)
+	if lowered_query == nil or lowered_query == "" then
+		return true
+	end
+
 	local haystack = tostring(value or ""):lower()
 	return haystack:find(lowered_query, 1, true) ~= nil
 end
@@ -121,6 +135,7 @@ local function build_example_result(path, kind, example, field, value)
 		kind = kind,
 		example_id = example_id,
 		field = field,
+		search_text = preview,
 		text = string.format("%s | %s: %s", example_id, field, preview),
 	}
 end
@@ -138,6 +153,7 @@ local function build_session_result(path, parsed, kind, field, value)
 		col = 1,
 		kind = kind,
 		field = field,
+		search_text = preview,
 		text = string.format("[session] %s: %s", field, preview),
 	}
 end
@@ -181,7 +197,7 @@ local function push_results_for_example_kind(results, parsed, path, kind, lowere
 		for _, field in ipairs(fields) do
 			local value = example.fields[field]
 
-			if value ~= nil and contains_query(value, lowered_query) then
+			if value ~= nil and matches_query(value, lowered_query) then
 				table.insert(results, build_example_result(path, kind, example, field, value))
 			end
 		end
@@ -198,7 +214,7 @@ local function push_results_for_session_kind(results, parsed, path, kind, lowere
 	local frontmatter_data = parsed.frontmatter and parsed.frontmatter.data or {}
 	local value = frontmatter_data[field]
 
-	if value ~= nil and contains_query(join_list(value), lowered_query) then
+	if value ~= nil and matches_query(join_list(value), lowered_query) then
 		table.insert(results, build_session_result(path, parsed, kind, field, value))
 	end
 end
@@ -226,7 +242,8 @@ local function collect_matches(kind, query)
 		return nil, files_err
 	end
 
-	local lowered_query = query:lower()
+	local normalized_query = normalize_query(query)
+	local lowered_query = normalized_query == "" and nil or normalized_query:lower()
 	local results = {}
 	local parse_failures = 0
 
@@ -290,7 +307,7 @@ local function show_quickfix(results, title)
 	end
 end
 
-local function show_telescope(results, title)
+local function load_telescope()
 	local ok_pickers, pickers = pcall(require, "telescope.pickers")
 	local ok_finders, finders = pcall(require, "telescope.finders")
 	local ok_config, telescope_config = pcall(require, "telescope.config")
@@ -301,14 +318,66 @@ local function show_telescope(results, title)
 		return nil, "telescope.nvim is not available"
 	end
 
+	return {
+		pickers = pickers,
+		finders = finders,
+		telescope_config = telescope_config,
+		actions = actions,
+		action_state = action_state,
+	}
+end
+
+local function has_jump_target(results)
+	for _, result in ipairs(results) do
+		if not result.is_placeholder then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function show_telescope(results, title, opts)
+	local options = opts or {}
+	local telescope, telescope_err = load_telescope()
+
+	if not telescope then
+		return nil, telescope_err
+	end
+
+	local previewer = nil
+
+	if has_jump_target(results) then
+		previewer = telescope.telescope_config.values.qflist_previewer({})
+	end
+
 	local function entry_maker(result)
+		if result.is_placeholder then
+			local display = tostring(result.text or "No results")
+
+			return {
+				value = result,
+				display = display,
+				ordinal = display:lower(),
+				filename = nil,
+				lnum = 1,
+				col = 1,
+				text = display,
+			}
+		end
+
 		local relative = vim.fn.fnamemodify(result.filename, ":.")
 		local display = string.format("%s:%d %s", relative, result.lnum, result.text)
+		local ordinal_text = tostring(result.search_text or result.text or ""):lower()
+
+		if ordinal_text == "" then
+			ordinal_text = display:lower()
+		end
 
 		return {
 			value = result,
 			display = display,
-			ordinal = string.format("%s %s", relative:lower(), tostring(result.text):lower()),
+			ordinal = ordinal_text,
 			filename = result.filename,
 			lnum = result.lnum,
 			col = result.col,
@@ -316,21 +385,69 @@ local function show_telescope(results, title)
 		}
 	end
 
-	pickers.new({}, {
+	telescope.pickers.new({}, {
 		prompt_title = title,
-		finder = finders.new_table({
+		default_text = options.default_text,
+		finder = telescope.finders.new_table({
 			results = results,
 			entry_maker = entry_maker,
 		}),
-		sorter = telescope_config.values.generic_sorter({}),
-		previewer = telescope_config.values.qflist_previewer({}),
+		sorter = telescope.telescope_config.values.generic_sorter({}),
+		previewer = previewer,
 		attach_mappings = function(prompt_bufnr)
-			actions.select_default:replace(function()
-				local selection = action_state.get_selected_entry()
-				actions.close(prompt_bufnr)
+			telescope.actions.select_default:replace(function()
+				local selection = telescope.action_state.get_selected_entry()
+				telescope.actions.close(prompt_bufnr)
 
-				if selection and selection.value then
+				if selection and selection.value and not selection.value.is_placeholder then
 					open_location(selection.value)
+				end
+			end)
+
+			return true
+		end,
+	}):find()
+
+	return true
+end
+
+local function pick_kind_telescope(default_kind, on_select)
+	local telescope, telescope_err = load_telescope()
+
+	if not telescope then
+		return nil, telescope_err
+	end
+
+	local kinds = M.kinds()
+	local default_index = nil
+
+	for index, kind in ipairs(kinds) do
+		if kind == default_kind then
+			default_index = index
+			break
+		end
+	end
+
+	telescope.pickers.new({}, {
+		prompt_title = "Elicit search kind",
+		finder = telescope.finders.new_table({
+			results = kinds,
+		}),
+		sorter = telescope.telescope_config.values.generic_sorter({}),
+		default_selection_index = default_index,
+		attach_mappings = function(prompt_bufnr)
+			telescope.actions.select_default:replace(function()
+				local selection = telescope.action_state.get_selected_entry()
+				telescope.actions.close(prompt_bufnr)
+
+				if not selection then
+					return
+				end
+
+				local selected_kind = selection.value
+
+				if selected_kind then
+					on_select(selected_kind)
 				end
 			end)
 
@@ -355,14 +472,46 @@ local function resolve_backend(opts_backend)
 	return backend
 end
 
-local function run_telescope(kind, query)
-	local output, output_err = M.run(kind, query, { backend = "telescope" })
+local function run_telescope_interactive(kind, query)
+	local normalized_kind, kind_err = validate_kind(kind)
 
-	if output == nil and output_err then
-		vim.notify("elicit.nvim: " .. tostring(output_err), vim.log.levels.ERROR)
+	if not normalized_kind then
+		return nil, kind_err
 	end
 
-	return output
+	local normalized_query = normalize_query(query)
+	local collected, collect_err = collect_matches(normalized_kind, "")
+
+	if not collected then
+		return nil, collect_err
+	end
+
+	if collected.parse_failures > 0 then
+		vim.notify(string.format("elicit.nvim: skipped %d unreadable file%s", collected.parse_failures, collected.parse_failures == 1 and "" or "s"), vim.log.levels.WARN)
+	end
+
+	local results = collected.results
+	local picker_results = results
+	local title = string.format("elicit search: %s", normalized_kind)
+
+	if #picker_results == 0 then
+		picker_results = {
+			{
+				is_placeholder = true,
+				text = string.format("No entries available for kind '%s'", normalized_kind),
+			},
+		}
+	end
+
+	local ok_telescope, telescope_err = show_telescope(picker_results, title, {
+		default_text = normalized_query,
+	})
+
+	if not ok_telescope then
+		return nil, telescope_err
+	end
+
+	return results
 end
 
 function M.kinds()
@@ -406,7 +555,20 @@ function M.run(kind, query, opts)
 	end
 
 	if #results == 0 then
-		if backend == "quickfix" then
+		if backend == "telescope" then
+			local empty_results = {
+				{
+					is_placeholder = true,
+					text = string.format("No matches for %s '%s'", normalized_kind, normalized_query),
+				},
+			}
+			local ok_telescope, telescope_err = show_telescope(empty_results, title)
+
+			if not ok_telescope then
+				vim.notify(string.format("elicit.nvim: %s; falling back to quickfix", tostring(telescope_err)), vim.log.levels.WARN)
+				show_quickfix(results, title)
+			end
+		else
 			show_quickfix(results, title)
 		end
 
@@ -435,45 +597,28 @@ function M.telescope(opts)
 	local kind = normalize_kind(options.kind)
 	local query = normalize_query(options.query)
 
-	if kind ~= "" and query ~= "" then
-		return run_telescope(kind, query)
-	end
-
-	if kind ~= "" and not KIND_SET[kind] then
-		vim.notify("elicit.nvim: " .. string.format("invalid search kind '%s'", kind), vim.log.levels.ERROR)
-		return nil
-	end
-
-	local function prompt_query(selected_kind)
-		vim.ui.input({
-			prompt = string.format("Elicit query (%s): ", selected_kind),
-			default = query,
-		}, function(input)
-			local selected_query = normalize_query(input)
-
-			if selected_query == "" then
-				vim.notify("elicit.nvim: search query cannot be empty", vim.log.levels.WARN)
-				return
-			end
-
-			run_telescope(selected_kind, selected_query)
-		end)
-	end
-
 	if kind ~= "" then
-		prompt_query(kind)
-		return true
-	end
+		local output, output_err = run_telescope_interactive(kind, query)
 
-	vim.ui.select(M.kinds(), {
-		prompt = "Elicit search kind:",
-	}, function(choice)
-		if not choice then
-			return
+		if output == nil and output_err then
+			vim.notify("elicit.nvim: " .. tostring(output_err), vim.log.levels.ERROR)
 		end
 
-		prompt_query(choice)
+		return output
+	end
+
+	local ok_picker, picker_err = pick_kind_telescope("", function(choice)
+		local output, output_err = run_telescope_interactive(choice, query)
+
+		if output == nil and output_err then
+			vim.notify("elicit.nvim: " .. tostring(output_err), vim.log.levels.ERROR)
+		end
 	end)
+
+	if not ok_picker then
+		vim.notify("elicit.nvim: " .. tostring(picker_err), vim.log.levels.ERROR)
+		return nil
+	end
 
 	return true
 end
