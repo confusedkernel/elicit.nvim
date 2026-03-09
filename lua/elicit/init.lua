@@ -105,6 +105,13 @@ function M._register_commands()
 		desc = "Create a new elicitation session file",
 	})
 
+	vim.api.nvim_create_user_command("ElicitInitSession", function()
+		run_action(require("elicit.session").init_session)
+	end, {
+		nargs = 0,
+		desc = "Initialize current buffer with session frontmatter",
+	})
+
 	vim.api.nvim_create_user_command("ElicitNewExample", function()
 		run_action(require("elicit.example").insert_example)
 	end, {

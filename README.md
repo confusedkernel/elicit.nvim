@@ -7,6 +7,7 @@ This project is currently under development (v0.1 MVP complete; v0.2 in progress
 ## Commands
 
 - `:ElicitNewSession [name]` (implemented)
+- `:ElicitInitSession` (implemented)
 - `:ElicitNewExample` (implemented)
 - `:ElicitValidate` (implemented)
 - `:ElicitSearch {kind} {query}` (implemented)
@@ -15,6 +16,7 @@ This project is currently under development (v0.1 MVP complete; v0.2 in progress
 ## Features
 
 - Session file creation under `session.dir` with YAML frontmatter template.
+- Session frontmatter initialization for the current buffer (`:ElicitInitSession`).
 - Session names are relative to `session.dir` and `.md` is auto-appended.
 - Configurable frontmatter fields via `session.fields`.
 - Auto-generated example block insertion with configurable `example.id_format`.
@@ -33,6 +35,11 @@ This project is currently under development (v0.1 MVP complete; v0.2 in progress
 require("elicit").setup({
   session = {
     dir = "sessions",
+    luasnip = {
+      enable = true,       -- enable LuaSnip snippet integration
+      trigger = "session", -- trigger word for session frontmatter
+      filetypes = { "markdown" },
+    },
   },
   example = {
     luasnip = {
@@ -102,10 +109,18 @@ cmp.setup({
 
 ## LuaSnip Trigger Integration
 
-Enable this in `elicit.setup()` if you want snippet-trigger insertion:
+Enable this in `elicit.setup()` if you want snippet-trigger insertion for
+example blocks and/or session frontmatter:
 
 ```lua
 require("elicit").setup({
+  session = {
+    luasnip = {
+      enable = true,
+      trigger = "session",
+      filetypes = { "markdown" },
+    },
+  },
   example = {
     luasnip = {
       enable = true,
@@ -115,6 +130,9 @@ require("elicit").setup({
   },
 })
 ```
+
+Then type `session` in a supported filetype and use your LuaSnip expand key to
+insert session frontmatter.
 
 Then type `example` in a supported filetype and use your LuaSnip expand key.
 The snippet auto-generates the same example ID format as `:ElicitNewExample`.

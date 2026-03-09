@@ -1,4 +1,4 @@
-*elicit.nvim.txt*            For Neovim >= 0.9               Last change: 2026-03-09
+*elicit.nvim.txt*            For Neovim >= 0.9               Last change: 2026-03-10
 
 ==============================================================================
 elicit.nvim                                               *elicit.nvim*
@@ -40,6 +40,13 @@ If setup is not called, defaults are used.
   Create a new session file under `session.dir`.
   If [name] is omitted, a default name is generated.
   If [name] has no `.md` extension, `.md` is appended.
+
+                                                        *:ElicitInitSession*
+:ElicitInitSession
+  Initialize current buffer as a session by inserting frontmatter at the top.
+  If `session.luasnip.enable = true` and LuaSnip is available, frontmatter is
+  expanded as a LuaSnip snippet first; otherwise plain text is inserted.
+  Fails when frontmatter already exists in the current buffer.
 
                                                         *:ElicitNewExample*
 :ElicitNewExample
@@ -86,6 +93,11 @@ Default config:
   require("elicit").setup({
     session = {
       dir = "sessions",
+      luasnip = {
+        enable = false,
+        trigger = "session",
+        filetypes = { "markdown" },
+      },
       fields = {
         "date", "language", "speaker", "session",
         "location", "topic", "audio", "status", "tags",
@@ -158,6 +170,7 @@ Included now:
   - Core parser module for frontmatter and example blocks.
   - User command registration with argument validation.
   - New session template generation (`:ElicitNewSession`).
+  - Session initialization in current buffer (`:ElicitInitSession`).
   - New example block insertion with ID generation (`:ElicitNewExample`).
   - Validation diagnostics with quickfix integration (`:ElicitValidate`).
   - Corpus search by form/gloss/status/speaker/session (`:ElicitSearch`).

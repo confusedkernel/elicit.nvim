@@ -3,6 +3,11 @@ local M = {}
 M.defaults = {
 	session = {
 		dir = "sessions",
+		luasnip = {
+			enable = false,
+			trigger = "session",
+			filetypes = { "markdown" },
+		},
 		fields = {
 			"date",
 			"language",
