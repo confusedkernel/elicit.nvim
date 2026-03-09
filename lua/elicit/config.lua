@@ -21,6 +21,11 @@ M.defaults = {
 	},
 	example = {
 		id_format = "LID-YYYYMMDD-NNN",
+		luasnip = {
+			enable = false,
+			trigger = "example",
+			filetypes = { "markdown" },
+		},
 		fields = {
 			"Prompt",
 			"Text",

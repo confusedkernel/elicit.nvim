@@ -15,6 +15,11 @@ local function default_example_field_value(field_name, example_cfg)
 	return ""
 end
 
+local function resolve_example_cfg()
+	local cfg = config.get()
+	return cfg.example or {}
+end
+
 local function normalize_language_id(frontmatter_data)
 	local raw = frontmatter_data.language
 	local value = util.trim(type(raw) == "string" and raw or tostring(raw or ""))
@@ -163,9 +168,26 @@ local function line_at(bufnr, index)
 	return out[1]
 end
 
-local function insert_lines_in_buffer(lines, parsed)
-	local bufnr = 0
+function M.default_field_value(field_name)
+	return default_example_field_value(field_name, resolve_example_cfg())
+end
 
+function M.next_example_id(bufnr, parsed_override)
+	local current = bufnr or 0
+	local example_cfg = resolve_example_cfg()
+	local parsed = parsed_override or parser.parse_buffer(current)
+	local frontmatter_data = parsed.frontmatter and parsed.frontmatter.data or {}
+	local lid = normalize_language_id(frontmatter_data)
+	local yyyymmdd = normalize_compact_date(frontmatter_data)
+	local counter = next_counter_from_examples(example_cfg, parsed.examples)
+
+	return format_example_id(example_cfg, {
+		lid = lid,
+		yyyymmdd = yyyymmdd,
+	}, counter)
+end
+
+local function check_buffer_writable(bufnr)
 	if not vim.bo[bufnr].modifiable then
 		return nil, "current buffer is not modifiable"
 	end
@@ -174,17 +196,71 @@ local function insert_lines_in_buffer(lines, parsed)
 		return nil, "current buffer is readonly"
 	end
 
-	local current_cursor = vim.api.nvim_win_get_cursor(0)
-	local line_count = vim.api.nvim_buf_line_count(bufnr)
-	local first_line = vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] or ""
-	local start_index = current_cursor[1]
-	local block_lines = vim.deepcopy(lines)
+	return true
+end
+
+local function compute_insert_line(parsed)
+	local cursor = vim.api.nvim_win_get_cursor(0)
+	local insert_at = cursor[1]
 
 	if parsed.frontmatter and parsed.frontmatter.found and parsed.frontmatter.end_line then
-		if current_cursor[1] <= parsed.frontmatter.end_line then
-			start_index = parsed.frontmatter.end_line
+		if cursor[1] <= parsed.frontmatter.end_line then
+			insert_at = parsed.frontmatter.end_line
 		end
 	end
+
+	return insert_at
+end
+
+local function prepare_snippet_position(bufnr, parsed)
+	local line_count = vim.api.nvim_buf_line_count(bufnr)
+	local first_line = vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] or ""
+
+	if line_count == 1 and first_line == "" then
+		vim.api.nvim_win_set_cursor(0, { 1, 0 })
+		return true
+	end
+
+	local insert_at = compute_insert_line(parsed)
+	local spacing = {}
+
+	local prev_line = line_at(bufnr, insert_at - 1) or ""
+
+	if util.trim(prev_line) ~= "" then
+		table.insert(spacing, "")
+	end
+
+	table.insert(spacing, "")
+
+	local next_line = line_at(bufnr, insert_at)
+
+	if next_line ~= nil and util.trim(next_line) ~= "" then
+		table.insert(spacing, "")
+	end
+
+	vim.api.nvim_buf_set_lines(bufnr, insert_at, insert_at, false, spacing)
+
+	local snippet_offset = (util.trim(prev_line) ~= "") and 1 or 0
+	local cursor_line = insert_at + snippet_offset + 1
+
+	vim.api.nvim_win_set_cursor(0, { cursor_line, 0 })
+
+	return true
+end
+
+local function insert_lines_in_buffer(lines, parsed)
+	local bufnr = 0
+
+	local writable, err = check_buffer_writable(bufnr)
+
+	if not writable then
+		return nil, err
+	end
+
+	local line_count = vim.api.nvim_buf_line_count(bufnr)
+	local first_line = vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1] or ""
+	local start_index = compute_insert_line(parsed)
+	local block_lines = vim.deepcopy(lines)
 
 	if line_count == 1 and first_line == "" then
 		start_index = 0
@@ -216,28 +292,58 @@ local function insert_lines_in_buffer(lines, parsed)
 		heading_offset = 2
 	end
 
-	vim.api.nvim_win_set_cursor(0, { start_index + heading_offset, 0 })
+	local heading_lnum = start_index + heading_offset
+
+	vim.api.nvim_win_set_cursor(0, { heading_lnum, 0 })
 
 	return true
 end
 
 function M.insert_example()
-	local cfg = config.get()
-	local example_cfg = cfg.example or {}
-	local parsed = parser.parse_buffer(0)
-	local frontmatter_data = parsed.frontmatter and parsed.frontmatter.data or {}
-	local lid = normalize_language_id(frontmatter_data)
-	local yyyymmdd = normalize_compact_date(frontmatter_data)
-	local counter = next_counter_from_examples(example_cfg, parsed.examples)
-	local example_id = format_example_id(example_cfg, {
-		lid = lid,
-		yyyymmdd = yyyymmdd,
-	}, counter)
-	local block_lines = build_example_block_lines(example_id, example_cfg)
-	local ok, err = insert_lines_in_buffer(block_lines, parsed)
+	local bufnr = 0
 
-	if not ok then
-		return nil, err
+	local writable, buf_err = check_buffer_writable(bufnr)
+
+	if not writable then
+		return nil, buf_err
+	end
+
+	local example_cfg = resolve_example_cfg()
+	local parsed = parser.parse_buffer(bufnr)
+	local example_id = M.next_example_id(bufnr, parsed)
+	local luasnip_cfg = example_cfg.luasnip or {}
+
+	if luasnip_cfg.enable then
+		local ok, luasnip_mod = pcall(require, "elicit.luasnip")
+
+		if ok then
+			prepare_snippet_position(bufnr, parsed)
+
+			local expanded, expand_err = luasnip_mod.expand_example(example_id)
+
+			if expanded then
+				vim.notify(string.format("elicit.nvim: inserted %s", example_id), vim.log.levels.INFO)
+				return example_id
+			end
+
+			vim.notify(
+				string.format("elicit.nvim: LuaSnip expand failed (%s), falling back", expand_err or "unknown"),
+				vim.log.levels.WARN
+			)
+
+			local undo_ok = pcall(vim.cmd, "silent! undo")
+
+			if not undo_ok then
+				return nil, "LuaSnip expand failed and undo failed"
+			end
+		end
+	end
+
+	local block_lines = build_example_block_lines(example_id, example_cfg)
+	local insert_ok, insert_err = insert_lines_in_buffer(block_lines, parsed)
+
+	if not insert_ok then
+		return nil, insert_err
 	end
 
 	vim.notify(string.format("elicit.nvim: inserted %s", example_id), vim.log.levels.INFO)

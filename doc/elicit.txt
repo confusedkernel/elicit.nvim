@@ -45,6 +45,13 @@ If setup is not called, defaults are used.
 :ElicitNewExample
   Insert a new elicitation example block at the cursor location.
   Example ID is generated from language, date, and session-local counter.
+  When `example.luasnip.enable = true` and LuaSnip is available,
+  the block is inserted as a LuaSnip snippet with Tab/S-Tab jumping
+  through empty field values. Without LuaSnip, plain text is inserted.
+  A LuaSnip trigger (default: "example") is also registered so you
+  can type the trigger word in insert mode and expand with your
+  LuaSnip expand key. If LuaSnip is lazy-loaded, registration is
+  retried automatically on buffer/insert events.
 
                                                           *:ElicitValidate*
 :ElicitValidate
@@ -90,6 +97,11 @@ Default config:
     },
     example = {
       id_format = "LID-YYYYMMDD-NNN",
+      luasnip = {
+        enable = false,
+        trigger = "example",
+        filetypes = { "markdown" },
+      },
       fields = {
         "Prompt", "Text", "Segmentation", "Gloss",
         "Translation", "Notes", "Status", "Audio",

@@ -9,6 +9,27 @@ local function notify_error(message)
 	vim.notify("elicit.nvim: " .. tostring(message), vim.log.levels.ERROR)
 end
 
+local function notify_warn(message)
+	vim.notify("elicit.nvim: " .. tostring(message), vim.log.levels.WARN)
+end
+
+local function sync_integrations()
+	local ok, integration = pcall(require, "elicit.luasnip")
+
+	if not ok then
+		notify_error(integration)
+		return
+	end
+
+	local synced, err = integration.sync()
+
+	if synced == nil and err then
+		if err ~= "LuaSnip is not available" then
+			notify_warn(err)
+		end
+	end
+end
+
 local function run_action(fn, ...)
 	local ok, result, err = pcall(fn, ...)
 
@@ -132,10 +153,10 @@ end
 function M.setup(opts)
 	config.setup(opts or {})
 	M._register_commands()
+	sync_integrations()
 end
 
 function M._bootstrap()
-	config.setup({})
 	M._register_commands()
 end
 
