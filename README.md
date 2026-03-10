@@ -23,7 +23,7 @@ This project is currently under development. You can check planned features in `
 - ID token replacement for `LID`, `YYYYMMDD`, and `N...` counter runs.
 - LuaSnip-powered field jumping after `:ElicitNewExample` with `<Tab>` / `<S-Tab>`.
 - LuaSnip trigger for example insertion (e.g. type `example` then expand).
-- Abbreviation config groundwork for upcoming v0.2 gloss completion features.
+- Abbreviation config + core abbreviation engine groundwork for v0.2 gloss completion features.
 - Session validation with quickfix diagnostics for token mismatches, missing required fields, and placeholder markers.
 - Corpus search by `form`, `gloss`, `status`, `speaker`, and `session`.
 - Search result display through quickfix or Telescope (`search.backend`).
@@ -55,7 +55,7 @@ require("elicit").setup({
     extra = {
       -- { label = "REDUP", description = "reduplication", aliases = { "redup" } },
     },
-    path = nil, -- optional project-local abbreviation file
+    path = nil, -- optional project-local JSON abbreviation file
     gloss_fields = { "Gloss" },
     separators = { "-", "=", "~", ".", ";", ":", "\\", ">", "<", " " },
     cmp = {

@@ -128,7 +128,7 @@ Default config:
       use_leipzig = true,
       mode = "extend", -- or "replace"
       extra = {},
-      path = nil,
+      path = nil, -- optional project-local JSON abbreviation file
       gloss_fields = { "Gloss" },
       separators = { "-", "=", "~", ".", ";", ":", "\\", ">", "<", " " },
       cmp = {
@@ -197,7 +197,7 @@ Included now:
   - Session initialization in current buffer (`:ElicitInitSession`).
   - New example block insertion with ID generation (`:ElicitNewExample`).
   - LuaSnip trigger integration for session/example snippet expansion.
-  - Abbreviation config + Leipzig seed dataset groundwork for v0.2.
+  - Abbreviation config + Leipzig seed + core merge/context engine groundwork.
   - Validation diagnostics with quickfix integration (`:ElicitValidate`).
   - Corpus search by form/gloss/status/speaker/session (`:ElicitSearch`).
   - Optional Telescope picker entry (`:Telescope elicit`).
