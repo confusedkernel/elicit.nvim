@@ -44,6 +44,22 @@ M.defaults = {
 		required_fields = { "Text", "Translation" },
 		status_cycle = { "draft", "needs-review", "checked" },
 	},
+	abbreviations = {
+		use_leipzig = true,
+		mode = "extend",
+		extra = {},
+		path = nil,
+		gloss_fields = { "Gloss" },
+		separators = { "-", "=", "~", ".", ";", ":", "\\", ">", "<", " " },
+		cmp = {
+			enable = true,
+		},
+		luasnip = {
+			enable = false,
+			trigger_prefix = ";",
+			filetypes = { "markdown" },
+		},
+	},
 	validation = {
 		delimiter = "%s+",
 		placeholders = { "?", "TODO", "XXX" },

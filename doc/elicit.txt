@@ -6,7 +6,7 @@ elicit.nvim                                               *elicit.nvim*
 Elicit is a Neovim plugin for linguistic fieldwork.
 Session files are Markdown with YAML frontmatter.
 
-This help file documents the current v0.1 MVP progress.
+This help file documents the current v0.2 development state.
 
 ==============================================================================
 Contents                                                   *elicit-contents*
@@ -46,6 +46,9 @@ If setup is not called, defaults are used.
   Initialize current buffer as a session by inserting frontmatter at the top.
   If `session.luasnip.enable = true` and LuaSnip is available, frontmatter is
   expanded as a LuaSnip snippet first; otherwise plain text is inserted.
+  A LuaSnip trigger (default: "session") is also registered so you can type
+  the trigger word in insert mode and expand with your LuaSnip expand key.
+  If LuaSnip is lazy-loaded, registration is retried on buffer/insert events.
   Fails when frontmatter already exists in the current buffer.
 
                                                         *:ElicitNewExample*
@@ -121,6 +124,22 @@ Default config:
       required_fields = { "Text", "Translation" },
       status_cycle = { "draft", "needs-review", "checked" },
     },
+    abbreviations = {
+      use_leipzig = true,
+      mode = "extend", -- or "replace"
+      extra = {},
+      path = nil,
+      gloss_fields = { "Gloss" },
+      separators = { "-", "=", "~", ".", ";", ":", "\\", ">", "<", " " },
+      cmp = {
+        enable = true,
+      },
+      luasnip = {
+        enable = false,
+        trigger_prefix = ";",
+        filetypes = { "markdown" },
+      },
+    },
     validation = {
       delimiter = "%s+",
       placeholders = { "?", "TODO", "XXX" },
@@ -140,6 +159,9 @@ When `search.corpus_glob` is nil, corpus discovery uses:
 >
   session.dir .. "/**/*.md"
 <
+
+`abbreviations` settings are available as v0.2 groundwork and will be used by
+gloss completion/expansion integrations in subsequent phases.
 
 ==============================================================================
 4. Telescope integration                                   *elicit-telescope*
@@ -162,7 +184,9 @@ Then run:
 ==============================================================================
 5. Development status                                           *elicit-status*
 
-Current phase: v0.1 phase 5.
+Current phase: v0.2 (in progress).
+
+v0.1 MVP is complete.
 
 Included now:
   - Plugin bootstrap and setup entry point.
@@ -172,13 +196,18 @@ Included now:
   - New session template generation (`:ElicitNewSession`).
   - Session initialization in current buffer (`:ElicitInitSession`).
   - New example block insertion with ID generation (`:ElicitNewExample`).
+  - LuaSnip trigger integration for session/example snippet expansion.
+  - Abbreviation config + Leipzig seed dataset groundwork for v0.2.
   - Validation diagnostics with quickfix integration (`:ElicitValidate`).
   - Corpus search by form/gloss/status/speaker/session (`:ElicitSearch`).
   - Optional Telescope picker entry (`:Telescope elicit`).
   - Export implementation for markdown/typst/json (`:ElicitExport`).
 
 Planned next:
-  - v0.2: consistency and lookup features.
+  - Gloss abbreviation helper (with project-local extension points).
+  - Morpheme consistency checker across the corpus.
+  - Project-local wordlist and novelty detector.
+  - Example status workflow enhancements and tooling.
 
 ==============================================================================
 vim:tw=78:ts=8:noet:ft=help:norl:
