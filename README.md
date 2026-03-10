@@ -2,16 +2,16 @@
 
 `elicit.nvim` is a Neovim plugin for linguistic fieldwork: session notes, elicitation examples, gloss validation, corpus search, and export.
 
-This project is currently under development (v0.1 MVP complete; v0.2 in progress). You can check planned features in `roadmap.md`.
+This project is currently under development. You can check planned features in `roadmap.md`.
 
 ## Commands
 
-- `:ElicitNewSession [name]` (implemented)
-- `:ElicitInitSession` (implemented)
-- `:ElicitNewExample` (implemented)
-- `:ElicitValidate` (implemented)
-- `:ElicitSearch {kind} {query}` (implemented)
-- `:ElicitExport {format} {scope} [value]` (implemented)
+- `:ElicitNewSession [name]`
+- `:ElicitInitSession`
+- `:ElicitNewExample`
+- `:ElicitValidate`
+- `:ElicitSearch {kind} {query}`
+- `:ElicitExport {format} {scope} [value]`
 
 ## Features
 
@@ -72,40 +72,6 @@ Then run:
 
 - `:Telescope elicit` (pick kind, then filter live in Telescope prompt)
 - `:ElicitSearch {kind} {query}` (same search engine, backend-controlled display)
-
-## nvim-cmp Tab Integration
-
-When using LuaSnip with nvim-cmp, ensure `luasnip.expand_or_jumpable()` is
-checked **before** `cmp.visible()` in your `<Tab>` mapping so that Tab jumps
-through snippet fields instead of selecting a completion item:
-
-```lua
-local cmp = require("cmp")
-local luasnip = require("luasnip")
-
-cmp.setup({
-  mapping = {
-    ["<Tab>"] = cmp.mapping(function(fallback)
-      if luasnip.expand_or_jumpable() then
-        luasnip.expand_or_jump()
-      elseif cmp.visible() then
-        cmp.select_next_item()
-      else
-        fallback()
-      end
-    end, { "i", "s" }),
-    ["<S-Tab>"] = cmp.mapping(function(fallback)
-      if luasnip.jumpable(-1) then
-        luasnip.jump(-1)
-      elseif cmp.visible() then
-        cmp.select_prev_item()
-      else
-        fallback()
-      end
-    end, { "i", "s" }),
-  },
-})
-```
 
 ## LuaSnip Trigger Integration
 
