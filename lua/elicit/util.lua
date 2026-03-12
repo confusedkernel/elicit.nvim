@@ -10,8 +10,16 @@ function M.trim(value)
 	return (value:gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
+function M.to_trimmed_string(value)
+	return M.trim(tostring(value or ""))
+end
+
 function M.starts_with(value, prefix)
 	return value:sub(1, #prefix) == prefix
+end
+
+function M.starts_with_ignore_case(value, prefix)
+	return string.lower(value):sub(1, #prefix) == prefix
 end
 
 function M.join_path(...)

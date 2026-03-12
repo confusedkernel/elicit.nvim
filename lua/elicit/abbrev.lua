@@ -3,39 +3,7 @@ local util = require("elicit.util")
 
 local M = {}
 
-local function is_list(value)
-	if type(value) ~= "table" then
-		return false
-	end
-
-	if vim.islist then
-		return vim.islist(value)
-	end
-
-	if vim.tbl_islist then
-		return vim.tbl_islist(value)
-	end
-
-	local max_index = 0
-
-	for key, _ in pairs(value) do
-		if type(key) ~= "number" or key < 1 or key % 1 ~= 0 then
-			return false
-		end
-
-		if key > max_index then
-			max_index = key
-		end
-	end
-
-	for index = 1, max_index do
-		if value[index] == nil then
-			return false
-		end
-	end
-
-	return true
-end
+local is_list = vim.islist or vim.tbl_islist
 
 local function normalize_aliases(value, label)
 	local out = {}
@@ -50,30 +18,16 @@ local function normalize_aliases(value, label)
 		return out
 	end
 
-	local function push(alias)
-		local normalized = util.trim(tostring(alias or ""))
+	for _, alias in pairs(value) do
+		local normalized = util.to_trimmed_string(alias)
 
-		if normalized == "" then
-			return
-		end
+		if normalized ~= "" then
+			local key = string.lower(normalized)
 
-		local key = string.lower(normalized)
-
-		if key == label_key or seen[key] then
-			return
-		end
-
-		seen[key] = true
-		table.insert(out, normalized)
-	end
-
-	if is_list(value) then
-		for _, alias in ipairs(value) do
-			push(alias)
-		end
-	else
-		for _, alias in pairs(value) do
-			push(alias)
+			if key ~= label_key and not seen[key] then
+				seen[key] = true
+				table.insert(out, normalized)
+			end
 		end
 	end
 
@@ -101,13 +55,13 @@ local function normalize_entry(raw)
 		return nil
 	end
 
-	local label = util.trim(tostring(entry.label or ""))
+	local label = util.to_trimmed_string(entry.label)
 
 	if label == "" then
 		return nil
 	end
 
-	local description = util.trim(tostring(entry.description or ""))
+	local description = util.to_trimmed_string(entry.description)
 
 	if description == "" then
 		description = nil
@@ -140,12 +94,7 @@ local function normalize_entries(value, source)
 		return out
 	end
 
-	local labels = {}
-
-	for label, _ in pairs(value) do
-		table.insert(labels, tostring(label))
-	end
-
+	local labels = vim.tbl_map(tostring, vim.tbl_keys(value))
 	table.sort(labels)
 
 	for _, label in ipairs(labels) do
@@ -177,7 +126,7 @@ local function resolve_abbrev_cfg()
 end
 
 local function resolve_mode(abbrev_cfg)
-	local mode = string.lower(util.trim(tostring(abbrev_cfg.mode or "extend")))
+	local mode = string.lower(util.to_trimmed_string(abbrev_cfg.mode or "extend"))
 
 	if mode == "replace" then
 		return "replace"
@@ -187,7 +136,7 @@ local function resolve_mode(abbrev_cfg)
 end
 
 local function resolve_project_path(path)
-	local raw = util.trim(tostring(path or ""))
+	local raw = util.to_trimmed_string(path)
 
 	if raw == "" then
 		return nil
@@ -198,14 +147,6 @@ local function resolve_project_path(path)
 	end
 
 	return util.normalize_path(util.join_path(vim.fn.getcwd(), raw))
-end
-
-local function decode_json(content)
-	if vim.json and vim.json.decode then
-		return pcall(vim.json.decode, content)
-	end
-
-	return pcall(vim.fn.json_decode, content)
 end
 
 local function project_entries(abbrev_cfg)
@@ -225,7 +166,7 @@ local function project_entries(abbrev_cfg)
 		return {}, string.format("failed to read abbreviations.path: %s", tostring(lines))
 	end
 
-	local decode_ok, decoded = decode_json(table.concat(lines, "\n"))
+	local decode_ok, decoded = pcall(vim.json.decode, table.concat(lines, "\n"))
 
 	if not decode_ok or type(decoded) ~= "table" then
 		return {}, string.format("failed to parse abbreviations.path as JSON: %s", path)
@@ -270,19 +211,38 @@ local function merge_entries(sets)
 	return merged
 end
 
-local function build_separator_set(abbrev_cfg)
-	local out = {}
-	local separators = abbrev_cfg.separators
-
-	if type(separators) ~= "table" then
-		separators = config.defaults.abbreviations.separators or {}
+local function build_set_from(values, defaults, transform)
+	if type(values) ~= "table" then
+		values = defaults or {}
 	end
 
-	for _, separator in pairs(separators) do
-		local value = tostring(separator or "")
+	local out = {}
 
-		for index = 1, #value do
-			out[value:sub(index, index)] = true
+	for _, v in pairs(values) do
+		local key = transform(tostring(v or ""))
+
+		if key ~= "" then
+			out[key] = true
+		end
+	end
+
+	return out
+end
+
+local function build_separator_set(abbrev_cfg)
+	local values = abbrev_cfg.separators
+
+	if type(values) ~= "table" then
+		values = config.defaults.abbreviations.separators or {}
+	end
+
+	local out = {}
+
+	for _, separator in pairs(values) do
+		local str = tostring(separator or "")
+
+		for i = 1, #str do
+			out[str:sub(i, i)] = true
 		end
 	end
 
@@ -290,22 +250,11 @@ local function build_separator_set(abbrev_cfg)
 end
 
 local function build_gloss_field_set(abbrev_cfg)
-	local out = {}
-	local fields = abbrev_cfg.gloss_fields
-
-	if type(fields) ~= "table" then
-		fields = config.defaults.abbreviations.gloss_fields or { "Gloss" }
-	end
-
-	for _, field in pairs(fields) do
-		local normalized = string.lower(util.trim(tostring(field or "")))
-
-		if normalized ~= "" then
-			out[normalized] = true
-		end
-	end
-
-	return out
+	return build_set_from(
+		abbrev_cfg.gloss_fields,
+		config.defaults.abbreviations.gloss_fields or { "Gloss" },
+		function(v) return string.lower(util.trim(v)) end
+	)
 end
 
 local function resolve_position(bufnr, row, col)
@@ -352,40 +301,45 @@ local function line_context(bufnr, row, col, abbrev_cfg)
 	}
 end
 
-local function starts_with_ignore_case(value, prefix)
-	return string.lower(value):sub(1, #prefix) == prefix
+local _cache = { tick = nil, result = nil, err = nil }
+
+function M.invalidate()
+	_cache = { tick = nil, result = nil, err = nil }
 end
 
 function M.entries()
+	local tick = vim.b.changedtick
+	if _cache.result and _cache.tick == tick then
+		return _cache.result, _cache.err
+	end
+
 	local abbrev_cfg = resolve_abbrev_cfg()
 	local leipzig, leipzig_err = leipzig_entries(abbrev_cfg)
 	local extra = normalize_entries(abbrev_cfg.extra or {}, "extra")
 	local project, project_err = project_entries(abbrev_cfg)
 	local merged = merge_entries({ leipzig, extra, project })
-	local err
 
-	if leipzig_err and project_err then
-		err = string.format("%s; %s", leipzig_err, project_err)
-	elseif leipzig_err then
-		err = leipzig_err
-	elseif project_err then
-		err = project_err
-	end
+	local errs = {}
+	if leipzig_err then table.insert(errs, leipzig_err) end
+	if project_err then table.insert(errs, project_err) end
+	local err = #errs > 0 and table.concat(errs, "; ") or nil
+
+	_cache = { tick = tick, result = merged, err = err }
 
 	return merged, err
 end
 
 function M.matches(prefix)
 	local entries, err = M.entries()
-	local needle = string.lower(util.trim(tostring(prefix or "")))
+	local needle = string.lower(util.to_trimmed_string(prefix))
 	local out = {}
 
 	for _, entry in ipairs(entries) do
-		local include = needle == "" or starts_with_ignore_case(entry.label, needle)
+		local include = needle == "" or util.starts_with_ignore_case(entry.label, needle)
 
 		if not include then
 			for _, alias in ipairs(entry.aliases or {}) do
-				if starts_with_ignore_case(alias, needle) then
+				if util.starts_with_ignore_case(alias, needle) then
 					include = true
 					break
 				end
