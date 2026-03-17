@@ -23,7 +23,7 @@ This project is currently under development. You can check planned features in `
 - ID token replacement for `LID`, `YYYYMMDD`, and `N...` counter runs.
 - LuaSnip-powered field jumping after `:ElicitNewExample` with `<Tab>` / `<S-Tab>`.
 - LuaSnip trigger for example insertion (e.g. type `example` then expand).
-- Abbreviation config + core abbreviation engine groundwork for v0.2 gloss completion features.
+- nvim-cmp source for gloss abbreviation completion in configured gloss fields.
 - Session validation with quickfix diagnostics for token mismatches, missing required fields, and placeholder markers.
 - Corpus search by `form`, `gloss`, `status`, `speaker`, and `session`.
 - Search result display through quickfix or Telescope (`search.backend`).
@@ -123,11 +123,28 @@ Then type `example` in a supported filetype and use your LuaSnip expand key.
 The snippet auto-generates the same example ID format as `:ElicitNewExample`.
 If LuaSnip is lazy-loaded, elicit will retry snippet registration on buffer/insert events.
 
-## Abbreviation Config (Phase 1)
+## nvim-cmp Integration
 
-The `abbreviations` config block is available as v0.2 groundwork. It currently
-defines merge sources and integration toggles; completion/expansion behavior is
-implemented in the next phases.
+When `abbreviations.cmp.enable = true` and `nvim-cmp` is installed, elicit
+registers a completion source named `elicit`.
+
+Add it to your cmp setup:
+
+```lua
+local cmp = require("cmp")
+
+cmp.setup({
+  sources = cmp.config.sources({
+    { name = "elicit" },
+  }, {
+    { name = "buffer" },
+  }),
+})
+```
+
+Completion is restricted to configured gloss fields such as `- Gloss:` lines.
+Items insert canonical labels, show descriptions in the menu/docs window, and
+respect project overrides from `abbreviations.extra` and `abbreviations.path`.
 
 ## Roadmap
 

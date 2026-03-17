@@ -160,8 +160,25 @@ When `search.corpus_glob` is nil, corpus discovery uses:
   session.dir .. "/**/*.md"
 <
 
-`abbreviations` settings are available as v0.2 groundwork and will be used by
-gloss completion/expansion integrations in subsequent phases.
+When `abbreviations.cmp.enable = true` and `nvim-cmp` is installed, elicit
+registers a source named `elicit`. Add it to your cmp sources to enable gloss
+abbreviation completion inside configured gloss fields.
+
+>
+  local cmp = require("cmp")
+
+  cmp.setup({
+    sources = cmp.config.sources({
+      { name = "elicit" },
+    }, {
+      { name = "buffer" },
+    }),
+  })
+<
+
+Completion only appears on configured gloss lines such as `- Gloss:`. The
+inserted text is the canonical abbreviation label, while descriptions and entry
+source metadata are shown in the completion UI.
 
 ==============================================================================
 4. Telescope integration                                   *elicit-telescope*
@@ -197,17 +214,18 @@ Included now:
   - Session initialization in current buffer (`:ElicitInitSession`).
   - New example block insertion with ID generation (`:ElicitNewExample`).
   - LuaSnip trigger integration for session/example snippet expansion.
-  - Abbreviation config + Leipzig seed + core merge/context engine groundwork.
+  - Abbreviation config + Leipzig seed + core merge/context engine.
+  - nvim-cmp source for gloss abbreviation completion.
   - Validation diagnostics with quickfix integration (`:ElicitValidate`).
   - Corpus search by form/gloss/status/speaker/session (`:ElicitSearch`).
   - Optional Telescope picker entry (`:Telescope elicit`).
   - Export implementation for markdown/typst/json (`:ElicitExport`).
 
 Planned next:
-  - Gloss abbreviation helper (with project-local extension points).
+  - LuaSnip abbreviation expansion support.
+  - Project-local abbreviation reload workflow.
   - Morpheme consistency checker across the corpus.
   - Project-local wordlist and novelty detector.
-  - Example status workflow enhancements and tooling.
 
 ==============================================================================
 vim:tw=78:ts=8:noet:ft=help:norl:

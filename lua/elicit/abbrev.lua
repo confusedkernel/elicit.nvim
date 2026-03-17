@@ -2,6 +2,7 @@ local config = require("elicit.config")
 local util = require("elicit.util")
 
 local M = {}
+local uv = vim.uv or vim.loop
 
 local is_list = vim.islist or vim.tbl_islist
 
@@ -253,7 +254,9 @@ local function build_gloss_field_set(abbrev_cfg)
 	return build_set_from(
 		abbrev_cfg.gloss_fields,
 		config.defaults.abbreviations.gloss_fields or { "Gloss" },
-		function(v) return string.lower(util.trim(v)) end
+		function(v)
+			return string.lower(util.trim(v))
+		end
 	)
 end
 
@@ -301,30 +304,61 @@ local function line_context(bufnr, row, col, abbrev_cfg)
 	}
 end
 
-local _cache = { tick = nil, result = nil, err = nil }
+local function project_mtime(path)
+	if not path or not uv or not uv.fs_stat then
+		return nil
+	end
+
+	local stat = uv.fs_stat(path)
+
+	if not stat or not stat.mtime then
+		return nil
+	end
+
+	return string.format("%s:%s", stat.mtime.sec or 0, stat.mtime.nsec or 0)
+end
+
+local function cache_key(abbrev_cfg)
+	local path = resolve_project_path(abbrev_cfg.path)
+
+	return vim.json.encode({
+		use_leipzig = abbrev_cfg.use_leipzig ~= false,
+		mode = resolve_mode(abbrev_cfg),
+		extra = abbrev_cfg.extra or {},
+		path = path,
+		project_mtime = project_mtime(path),
+	})
+end
+
+local _cache = { key = nil, result = nil, err = nil }
 
 function M.invalidate()
-	_cache = { tick = nil, result = nil, err = nil }
+	_cache = { key = nil, result = nil, err = nil }
 end
 
 function M.entries()
-	local tick = vim.b.changedtick
-	if _cache.result and _cache.tick == tick then
+	local abbrev_cfg = resolve_abbrev_cfg()
+	local key = cache_key(abbrev_cfg)
+
+	if _cache.result and _cache.key == key then
 		return _cache.result, _cache.err
 	end
 
-	local abbrev_cfg = resolve_abbrev_cfg()
 	local leipzig, leipzig_err = leipzig_entries(abbrev_cfg)
 	local extra = normalize_entries(abbrev_cfg.extra or {}, "extra")
 	local project, project_err = project_entries(abbrev_cfg)
 	local merged = merge_entries({ leipzig, extra, project })
 
 	local errs = {}
-	if leipzig_err then table.insert(errs, leipzig_err) end
-	if project_err then table.insert(errs, project_err) end
+	if leipzig_err then
+		table.insert(errs, leipzig_err)
+	end
+	if project_err then
+		table.insert(errs, project_err)
+	end
 	local err = #errs > 0 and table.concat(errs, "; ") or nil
 
-	_cache = { tick = tick, result = merged, err = err }
+	_cache = { key = key, result = merged, err = err }
 
 	return merged, err
 end

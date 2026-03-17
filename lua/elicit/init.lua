@@ -14,17 +14,20 @@ local function notify_warn(message)
 end
 
 local function sync_integrations()
-	local ok, integration = pcall(require, "elicit.luasnip")
+	for _, spec in ipairs({
+		{ module = "elicit.cmp", unavailable = "nvim-cmp is not available" },
+		{ module = "elicit.luasnip", unavailable = "LuaSnip is not available" },
+	}) do
+		local ok, integration = pcall(require, spec.module)
 
-	if not ok then
-		notify_error(integration)
-		return
-	end
+		if not ok then
+			notify_error(integration)
+			return
+		end
 
-	local synced, err = integration.sync()
+		local synced, err = integration.sync()
 
-	if synced == nil and err then
-		if err ~= "LuaSnip is not available" then
+		if synced == nil and err and err ~= spec.unavailable then
 			notify_warn(err)
 		end
 	end
@@ -159,6 +162,9 @@ end
 
 function M.setup(opts)
 	config.setup(opts or {})
+	pcall(function()
+		require("elicit.abbrev").invalidate()
+	end)
 	M._register_commands()
 	sync_integrations()
 end
